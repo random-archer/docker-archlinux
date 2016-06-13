@@ -1,0 +1,71 @@
+
+# default base
+FROM archimg/base:2017.10.01
+
+# repository baseline
+ENV ARCH_DATE="2017/11/01"
+ENV ARCH_BASE="http://archive.archlinux.org/repos/$ARCH_DATE"
+
+# freeze packages
+RUN \
+    echo Server=$ARCH_BASE'/$repo/os/$arch' > /etc/pacman.d/mirrorlist && \
+    true
+
+# pacman command
+ENV PACRUN="pacman --needed --noconfirm --noprogressbar"
+
+# update system
+RUN \
+    $PACRUN -Sy && \
+    $PACRUN -S pacman archlinux-keyring && \
+    $PACRUN -Syu && \
+    true
+
+# support makepkg
+#RUN \
+#    $PACRUN -S base base-devel git && \
+#    true
+
+# provide /bin/aur
+#COPY script/aur.sh /usr/local/bin/aur
+
+# provision systemd
+RUN $PACRUN -S systemd
+
+# non-gui target
+RUN systemctl set-default multi-user.target 
+
+# minimal services
+RUN find \
+	/etc/systemd/system \
+	/lib/systemd/system \
+	-path '*.wants/*' \
+	-not -name '*journald*' \
+	-not -name '*systemd-tmpfiles*' \
+	-not -name '*systemd-user-sessions*' \
+	-exec rm \{} \;
+         
+# default user
+USER root
+
+# default home
+ENV HOME /root
+
+# default working folder
+WORKDIR /root
+
+# debug terminal
+ENV TERM=xterm
+
+# notify systemd
+ENV container docker
+
+# default executable
+#ENTRYPOINT [ "/bin/sh" , "-c" ]
+
+# default command
+#CMD [ "/bin/bash" ]
+
+#CMD ["/bin/bash", "-c", "exec /sbin/init --log-target=journal 3>&1"]
+
+CMD ["/usr/sbin/init"]
